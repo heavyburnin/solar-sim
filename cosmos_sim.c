@@ -407,7 +407,20 @@ int main(void)
     Texture2D starsTex = LoadTexture("stars.png");
     
     Texture2D sunGlow = CreateSunGlowTexture();
-    
+   
+    // Create asteroid model once for all asteroids
+    Texture2D asteroidTex = LoadTexture("asteroid.png");
+    Model asteroidModel = {0};
+    if (asteroidTex.id != 0) {
+        Mesh sphereMesh = GenMeshSphere(1.0f, 16, 16);  // Low poly for performance
+        asteroidModel = LoadModelFromMesh(sphereMesh);
+        SetMaterialTexture(&asteroidModel.materials[0], MATERIAL_MAP_DIFFUSE, asteroidTex);
+        UnloadMesh(sphereMesh);
+        printf("✓ Asteroid model loaded with texture\n");
+    } else {
+        printf("Warning: asteroid.png not found\n");
+    }
+
     Planet planets[MAX_PLANETS];
     memset(planets, 0, sizeof(planets));
     
@@ -705,35 +718,27 @@ int main(void)
             DrawSphere((Vector3){0,0,0}, 1.6f, (Color){255, 255, 100, 120});
         }
         
-        for (int i = 0; i < ASTEROID_COUNT; i++) {
-            float distanceToSun = sqrtf(asteroids[i].position.x * asteroids[i].position.x + 
-                                        asteroids[i].position.z * asteroids[i].position.z);
-            float brightness = 0.6f + (1.0f / (1.0f + distanceToSun * 0.08f));
-            if (brightness > 1.0f) brightness = 1.0f;
-            if (brightness < 0.4f) brightness = 0.4f;
-            
-            Color brightColor = (Color){
-                (unsigned char)(asteroids[i].color.r * brightness),
-                (unsigned char)(asteroids[i].color.g * brightness),
-                (unsigned char)(asteroids[i].color.b * brightness),
-                asteroids[i].color.a
-            };
-            
-            DrawSphere(asteroids[i].position, asteroids[i].size, brightColor);
-            
-            if (asteroids[i].size > 0.12f) {
-                DrawSphere(asteroids[i].position, asteroids[i].size + 0.025f, 
-                          (Color){brightColor.r, brightColor.g, brightColor.b, 60});
-            }
-            
-            if (asteroids[i].size > 0.08f) {
-                Vector3 lightDir = Vector3Normalize((Vector3){1, 0.5f, 0.5f});
-                float dot = lightDir.x * asteroids[i].position.x + 
-                            lightDir.z * asteroids[i].position.z;
-                if (dot > 0.3f) {
-                    DrawSphere(asteroids[i].position, asteroids[i].size * 0.3f, 
-                              (Color){255, 245, 200, 100});
-                }
+        // Draw asteroid belt - proper billboards (always face camera naturally)
+        if (asteroidTex.id != 0) {
+            for (int i = 0; i < ASTEROID_COUNT; i += 2) {
+                float distanceToSun = sqrtf(asteroids[i].position.x * asteroids[i].position.x +
+                                            asteroids[i].position.z * asteroids[i].position.z);
+                float brightness = 0.6f + (1.0f / (1.0f + distanceToSun * 0.08f));
+                if (brightness > 1.0f) brightness = 1.0f;
+                if (brightness < 0.4f) brightness = 0.4f;
+                
+                // Calculate the direction from asteroid to camera
+                Vector3 toCamera = Vector3Subtract(cam.position, asteroids[i].position);
+                toCamera = Vector3Normalize(toCamera);
+                
+                // Create a rotation that makes the billboard face the camera
+                // but with a slight random tilt so they're not all perfectly aligned
+                float rotAngle = asteroids[i].rotation * 57.3f;
+                
+                // Use billboard with proper alpha blending
+                DrawBillboard(cam, asteroidTex, asteroids[i].position,
+                             asteroids[i].size * 1.2f, 
+                             (Color){220, 190, 140, (unsigned char)(200 * brightness)});
             }
         }
 
@@ -855,7 +860,9 @@ int main(void)
     UnloadTexture(uraTex);
     UnloadTexture(nepTex);
     UnloadTexture(starsTex);
-    
+    UnloadTexture(asteroidTex);    
+    if (asteroidModel.materialCount > 0) UnloadModel(asteroidModel);
+
     UnloadMesh(sphere);
     UnloadMesh(lowPoly);
     UnloadMesh(ringMesh);
