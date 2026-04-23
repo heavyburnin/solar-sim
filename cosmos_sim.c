@@ -73,7 +73,7 @@ typedef struct {
 // ================= DIALOG STRUCT =================
 typedef struct {
     bool active;
-    int selectedType;  // 0=planet, 1=sun, 2=moon
+    int selectedType;
     int selectedIndex;
 } InfoDialog;
 
@@ -179,15 +179,11 @@ static void DrawInfoDialog(InfoDialog *dialog, Planet *planets)
     float dx = (GetScreenWidth() - dw) / 2;
     float dy = (GetScreenHeight() - dh) / 2;
     
-    // Background overlay
     DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), (Color){0, 0, 0, 200});
-    
-    // Dialog box
     DrawRectangleRounded((Rectangle){dx, dy, dw, dh}, 0.1f, 10, (Color){25, 25, 45, 245});
     DrawRectangleRoundedLines((Rectangle){dx, dy, dw, dh}, 0.1f, 10, GOLD);
     DrawRectangleRounded((Rectangle){dx + 5, dy + 5, dw - 10, 50}, 0.1f, 10, (Color){60, 60, 100, 255});
     
-    // Title
     char title[64];
     Color titleColor;
     if (dialog->selectedType == 0) {
@@ -203,7 +199,6 @@ static void DrawInfoDialog(InfoDialog *dialog, Planet *planets)
     int tw = MeasureText(title, 26);
     DrawText(title, dx + dw/2 - tw/2, dy + 15, 26, titleColor);
     
-    // Close button (X)
     Rectangle closeBtn = {dx + dw - 45, dy + 8, 35, 35};
     DrawRectangleRounded(closeBtn, 0.2f, 10, (Color){200, 60, 60, 220});
     DrawText("X", closeBtn.x + 12, closeBtn.y + 7, 22, WHITE);
@@ -214,7 +209,6 @@ static void DrawInfoDialog(InfoDialog *dialog, Planet *planets)
     
     float y = dy + 70;
     
-    // Preview image
     float px = dx + dw/2 - 60;
     if (dialog->selectedType == 0 && planets[dialog->selectedIndex].tex.id != 0) {
         DrawTexturePro(planets[dialog->selectedIndex].tex, 
@@ -231,7 +225,6 @@ static void DrawInfoDialog(InfoDialog *dialog, Planet *planets)
     }
     y += 135;
     
-    // Description
     DrawText("DESCRIPTION", dx + 15, y, 16, SKYBLUE);
     y += 22;
     DrawRectangle(dx + 10, y, dw - 20, 55, (Color){0, 0, 0, 120});
@@ -248,23 +241,22 @@ static void DrawInfoDialog(InfoDialog *dialog, Planet *planets)
                           "The windiest planet in the solar system.";
         DrawText(desc, dx + 15, y + 8, 12, LIGHTGRAY);
     } else if (dialog->selectedType == 1) {
-        DrawText("The Sun is the star at the center of our Solar System. It is", dx + 15, y + 5, 12, LIGHTGRAY);
-        DrawText("a nearly perfect sphere of hot plasma, heated by nuclear", dx + 15, y + 22, 12, LIGHTGRAY);
-        DrawText("fusion reactions in its core.", dx + 15, y + 39, 12, LIGHTGRAY);
+        DrawText("The Sun is the star at the center of our Solar System.", dx + 15, y + 5, 12, LIGHTGRAY);
+        DrawText("It is a nearly perfect sphere of hot plasma, heated by", dx + 15, y + 22, 12, LIGHTGRAY);
+        DrawText("nuclear fusion reactions in its core.", dx + 15, y + 39, 12, LIGHTGRAY);
     } else {
-        DrawText("The Moon is Earth's only natural satellite. It is the", dx + 15, y + 5, 12, LIGHTGRAY);
-        DrawText("fifth-largest natural satellite in the Solar System and", dx + 15, y + 22, 12, LIGHTGRAY);
-        DrawText("is in synchronous rotation with Earth.", dx + 15, y + 39, 12, LIGHTGRAY);
+        DrawText("The Moon is Earth's only natural satellite.", dx + 15, y + 5, 12, LIGHTGRAY);
+        DrawText("It is the fifth-largest natural satellite in the Solar", dx + 15, y + 22, 12, LIGHTGRAY);
+        DrawText("System and is in synchronous rotation with Earth.", dx + 15, y + 39, 12, LIGHTGRAY);
     }
     y += 70;
     
-    // Statistics
     DrawText("STATISTICS", dx + 15, y, 16, SKYBLUE);
     y += 22;
     
     if (dialog->selectedType == 0) {
         Planet *p = &planets[dialog->selectedIndex];
-        DrawText(TextFormat("Distance from Sun: %.2f AU (%.0f million km)", p->a, p->a * 149.6), dx + 20, y, 12, WHITE); y += 18;
+        DrawText(TextFormat("Distance: %.2f AU (%.0f million km)", p->a, p->a * 149.6), dx + 20, y, 12, WHITE); y += 18;
         DrawText(TextFormat("Orbital Period: %.2f Earth years", p->period), dx + 20, y, 12, WHITE); y += 18;
         DrawText(TextFormat("Diameter: %.0f km", p->radius * 20000), dx + 20, y, 12, WHITE); y += 18;
         DrawText(TextFormat("Day Length: %.1f Earth hours", 24.0f / fmax(p->rot_speed, 0.1f)), dx + 20, y, 12, WHITE); y += 18;
@@ -277,13 +269,12 @@ static void DrawInfoDialog(InfoDialog *dialog, Planet *planets)
         DrawText("Mass: 333,000 x Earth", dx + 20, y, 12, WHITE); y += 25;
     } else {
         DrawText("Type: Natural satellite", dx + 20, y, 12, WHITE); y += 18;
-        DrawText("Distance from Earth: 384,400 km", dx + 20, y, 12, WHITE); y += 18;
+        DrawText("Distance: 384,400 km from Earth", dx + 20, y, 12, WHITE); y += 18;
         DrawText("Diameter: 3,474 km", dx + 20, y, 12, WHITE); y += 18;
         DrawText("Orbital Period: 27.3 days", dx + 20, y, 12, WHITE); y += 18;
         DrawText("Gravity: 1.62 m/s² (0.165 x Earth)", dx + 20, y, 12, WHITE); y += 25;
     }
     
-    // Interesting Facts
     DrawText("INTERESTING FACTS", dx + 15, y, 16, SKYBLUE);
     y += 22;
     
@@ -342,7 +333,6 @@ static void DrawInfoDialog(InfoDialog *dialog, Planet *planets)
         DrawText("• Causes Earth's tides", dx + 20, y, 11, LIME); y += 20;
     }
     
-    // Bottom close button
     float btnY = dy + dh - 50;
     Rectangle closeBtn2 = {dx + dw/2 - 60, btnY, 120, 38};
     DrawRectangleRounded(closeBtn2, 0.2f, 10, (Color){80, 80, 120, 230});
@@ -355,18 +345,16 @@ static void DrawInfoDialog(InfoDialog *dialog, Planet *planets)
 
 int main(void)
 {
-    InitWindow(1920, 1080, "SOLAR SYSTEM - BETA 1.0");
+    InitWindow(1920, 1080, "SOLAR SYSTEM SIMULATION - BETA 1.0");
     SetTargetFPS(MAX_FPS);
     srand(time(NULL));
     
-    // Camera
     Camera3D cam = {0};
     cam.position = (Vector3){0, 50, 85};
     cam.target = (Vector3){0, 0, 0};
     cam.up = (Vector3){0, 1, 0};
     cam.fovy = 65;
     
-    // Meshes
     Mesh sphere = GenMeshSphere(1, 48, 48);
     Mesh lowPoly = GenMeshSphere(1, 24, 24);
     
@@ -387,7 +375,6 @@ int main(void)
     
     Texture2D sunGlow = CreateSunGlowTexture();
     
-    // Initialize planets
     Planet planets[MAX_PLANETS];
     memset(planets, 0, sizeof(planets));
     
@@ -434,15 +421,12 @@ int main(void)
         }
     }
     
-    // Sun model
     Model sunModel = LoadModelFromMesh(sphere);
     SetMaterialTexture(&sunModel.materials[0], MATERIAL_MAP_DIFFUSE, sunTex);
     
-    // Moon model
     Model moonModel = LoadModelFromMesh(lowPoly);
     SetMaterialTexture(&moonModel.materials[0], MATERIAL_MAP_DIFFUSE, moonTex);
     
-    // Saturn rings
     Mesh ringMesh = CreateRingMesh(1.2f, 2.0f, 64);
     Model ringModel = LoadModelFromMesh(ringMesh);
     SetMaterialTexture(&ringModel.materials[0], MATERIAL_MAP_DIFFUSE, ringTex);
@@ -453,17 +437,16 @@ int main(void)
     SetMaterialTexture(&outerRingModel.materials[0], MATERIAL_MAP_DIFFUSE, ringTex);
     outerRingModel.materials[0].maps[MATERIAL_MAP_DIFFUSE].color = (Color){200, 190, 160, 160};
     
-    // Asteroid belt
+    // Asteroid belt - FIXED: all asteroids update smoothly
     Asteroid asteroids[ASTEROID_COUNT];
     for (int i = 0; i < ASTEROID_COUNT; i++) {
         asteroids[i].radius = 7.0f + ((float)rand() / RAND_MAX) * 2.0f;
         asteroids[i].angle = ((float)rand() / RAND_MAX) * 2 * PI;
         asteroids[i].yOffset = ((float)rand() / RAND_MAX - 0.5f) * 0.4f;
         asteroids[i].size = 0.045f + ((float)rand() / RAND_MAX) * 0.05f;
-        asteroids[i].speed = 0.1f + ((float)rand() / RAND_MAX) * 0.1f;
+        asteroids[i].speed = 0.08f + ((float)rand() / RAND_MAX) * 0.08f;
     }
     
-    // Camera controls
     float zoom = 85.0f;
     float minZoom = 5.0f;
     float maxZoom = 200.0f;
@@ -471,22 +454,18 @@ int main(void)
     bool rotating = false;
     Vector2 lastMouse = {0, 0};
     
-    // Moon position
     Vector3 moonPos = {0, 0, 0};
     float moonRadius = 0.18f;
     
-    // Dialog
     InfoDialog dialog = {0};
     dialog.active = false;
     
-    // Toggles
     float timeScale = 0.2f;
     float starRot = 0;
     bool showOrbits = true;
     bool showTrails = true;
     bool showAtmospheres = true;
     
-    // Stars
     #define STAR_COUNT 300
     Vector2 stars[STAR_COUNT];
     for (int i = 0; i < STAR_COUNT; i++) {
@@ -498,7 +477,7 @@ int main(void)
     float frameTime = 0;
     
     printf("\n========================================\n");
-    printf("SOLAR SYSTEM - BETA 1.0\n");
+    printf("SOLAR SYSTEM SIMULATION - BETA 1.0\n");
     printf("Click on any planet, Sun, or Moon for info!\n");
     printf("========================================\n\n");
     
@@ -516,7 +495,6 @@ int main(void)
         
         float t = GetTime() * timeScale;
         
-        // Update planet positions
         for (int i = 0; i < MAX_PLANETS; i++) {
             planets[i].position = calculateOrbit(planets[i].a, planets[i].e, planets[i].i,
                                                 planets[i].Omega, planets[i].omega,
@@ -527,26 +505,22 @@ int main(void)
             }
         }
         
-        // Update moon position
         float moonAngle = t * 13.0f;
         moonPos = Vector3Add(planets[2].position, 
                             (Vector3){cosf(moonAngle) * 0.75f, sinf(moonAngle) * 0.1f, sinf(moonAngle) * 0.55f});
         
         // Update asteroids
-        static int asteroidFrame = 0;
-        asteroidFrame++;
-        if (asteroidFrame % 2 == 0) {
-            for (int i = 0; i < ASTEROID_COUNT; i += 2) {
-                float angle = GetTime() * asteroids[i].speed * 0.1f;
-                asteroids[i].position = (Vector3){
-                    cosf(asteroids[i].angle + angle) * asteroids[i].radius,
-                    asteroids[i].yOffset + sinf(angle) * 0.05f,
-                    sinf(asteroids[i].angle + angle) * asteroids[i].radius
-                };
-            }
+        for (int i = 0; i < ASTEROID_COUNT; i++) {
+            asteroids[i].angle += asteroids[i].speed * dt;
+            if (asteroids[i].angle > 2 * PI) asteroids[i].angle -= 2 * PI;
+            
+            asteroids[i].position = (Vector3){
+                cosf(asteroids[i].angle) * asteroids[i].radius,
+                asteroids[i].yOffset + sinf(asteroids[i].angle * 1.5f) * 0.05f,
+                sinf(asteroids[i].angle) * asteroids[i].radius
+            };
         }
         
-        // Camera controls
         float wheel = GetMouseWheelMove();
         if (wheel != 0 && !dialog.active) {
             zoom -= wheel * 3.0f;
@@ -577,9 +551,7 @@ int main(void)
         };
         cam.target = (Vector3){0, 0, 0};
         
-        // Planet selection
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            // Close dialog if open
             if (dialog.active) {
                 dialog.active = false;
             } else {
@@ -587,7 +559,6 @@ int main(void)
                 float closest = 2.5f;
                 int selType = -1, selIdx = -1;
                 
-                // Check Sun
                 Vector3 sunPos = {0, 0, 0};
                 float sunDist = GetRayCollisionSphere(ray, sunPos, 1.8f).distance;
                 if (sunDist > 0 && sunDist < closest) {
@@ -595,14 +566,12 @@ int main(void)
                     closest = sunDist;
                 }
                 
-                // Check Moon
                 float moonDist = GetRayCollisionSphere(ray, moonPos, moonRadius + 0.3f).distance;
                 if (moonDist > 0 && moonDist < closest) {
                     selType = 2;
                     closest = moonDist;
                 }
                 
-                // Check Planets
                 for (int i = 0; i < MAX_PLANETS; i++) {
                     float dist = GetRayCollisionSphere(ray, planets[i].position, planets[i].radius + 0.4f).distance;
                     if (dist > 0 && dist < closest) {
@@ -626,7 +595,6 @@ int main(void)
         BeginDrawing();
         ClearBackground(BLACK);
         
-        // Stars
         for (int i = 0; i < STAR_COUNT; i++) {
             DrawPixelV(stars[i], (Color){120, 120, 180, 150});
         }
@@ -640,36 +608,31 @@ int main(void)
         
         BeginMode3D(cam);
         
-        // Orbits
         if (showOrbits) {
             for (int i = 0; i < MAX_PLANETS; i++) {
                 DrawCircle3D((Vector3){0, 0, 0}, planets[i].a, (Vector3){0, 1, 0}, 90, (Color){80, 80, 150, 40});
             }
         }
         
-        // Sun
         float sunPulse = 1.0f + 0.02f * sinf(GetTime() * 2.0f);
         DrawBillboard(cam, sunGlow, (Vector3){0,0,0}, 2.8f * sunPulse, (Color){255, 200, 100, 80});
         DrawModelEx(sunModel, (Vector3){0,0,0}, (Vector3){0,1,0}, GetTime() * 0.15f,
                    (Vector3){1.4f * sunPulse, 1.4f * sunPulse, 1.4f * sunPulse}, WHITE);
         
-        // Asteroid belt
-        for (int i = 0; i < ASTEROID_COUNT; i += 2) {
+        // Draw all asteroids
+        for (int i = 0; i < ASTEROID_COUNT; i++) {
             DrawSphere(asteroids[i].position, asteroids[i].size, (Color){170, 140, 100, 200});
         }
         
-        // Draw planets
         for (int i = 0; i < MAX_PLANETS; i++) {
             Planet *p = &planets[i];
             float rotAngle = GetTime() * p->rot_speed;
             
-            // Highlight selected planet
             if (dialog.active && dialog.selectedType == 0 && dialog.selectedIndex == i) {
                 DrawSphere(p->position, p->radius + 0.18f, (Color){255, 255, 100, 120});
                 DrawCircle3D(p->position, p->radius + 0.35f, (Vector3){0, 1, 0}, 30, (Color){255, 255, 100, 200});
             }
             
-            // Trail
             if (showTrails) {
                 for (int j = 0; j < TRAIL_LENGTH - 1; j++) {
                     int idx = (p->trailIndex - j - 1 + TRAIL_LENGTH) % TRAIL_LENGTH;
@@ -679,7 +642,6 @@ int main(void)
                 }
             }
             
-            // Atmosphere
             if (showAtmospheres && p->atmosphereHeight > 0 && p->atmosphereModel.materialCount > 0) {
                 DrawModelEx(p->atmosphereModel, p->position, (Vector3){1, 0, 0}, 0,
                            (Vector3){1 + p->atmosphereHeight * 0.3f, 
@@ -687,11 +649,9 @@ int main(void)
                                     1 + p->atmosphereHeight * 0.3f}, WHITE);
             }
             
-            // Planet
             DrawModelEx(p->model, p->position, (Vector3){0,1,0}, rotAngle,
                        (Vector3){p->radius, p->radius, p->radius}, WHITE);
             
-            // Earth clouds and moon
             if (i == 2 && p->cloudModel.materialCount > 0) {
                 float cloudRot = rotAngle * 1.2f;
                 DrawModelEx(p->cloudModel, p->position, (Vector3){0,1,0}, cloudRot,
@@ -706,7 +666,6 @@ int main(void)
                 }
             }
             
-            // Saturn rings
             if (i == 5) {
                 DrawModelEx(ringModel, p->position, (Vector3){1,0,0}, 28.0f,
                            (Vector3){1.0f, 1.0f, 0.25f}, (Color){255, 245, 200, 200});
@@ -714,7 +673,6 @@ int main(void)
                            (Vector3){1.0f, 1.0f, 0.15f}, (Color){200, 190, 160, 160});
             }
             
-            // Labels
             Vector2 sp = GetWorldToScreen(p->position, cam);
             float dist = Vector3Distance(p->position, cam.position);
             if (dist < 400) {
@@ -724,7 +682,6 @@ int main(void)
             }
         }
         
-        // Moon label
         Vector2 moonSp = GetWorldToScreen(moonPos, cam);
         float moonDistCam = Vector3Distance(moonPos, cam.position);
         if (moonDistCam < 300) {
@@ -734,10 +691,9 @@ int main(void)
         
         EndMode3D();
         
-        // UI
         if (!dialog.active) {
-            DrawText("SOLAR SYSTEM - BETA 1.0", 10, 10, 20, YELLOW);
-            DrawText(TextFormat("FPS: %.0f", fps), 10, 40, 15, GREEN);
+            DrawText("SOLAR SYSTEM SIMULATION - BETA 1.0", 10, 10, 20, YELLOW);
+            DrawText(TextFormat("FPS: %.0f", fps), 10, 40, 15, fps > 55 ? GREEN : RED);
             DrawText("★ LEFT CLICK on any planet, Sun, or Moon for DETAILED INFORMATION ★", 10, 65, 14, LIME);
             DrawText("Right-click+Drag: Rotate Camera | Mouse Wheel: Zoom In/Out", 10, 90, 12, LIGHTGRAY);
             DrawText(TextFormat("Time Scale: %.2fx | Zoom: %.1f", timeScale, zoom), 10, 110, 12, SKYBLUE);
@@ -759,16 +715,12 @@ int main(void)
             DrawText(TextFormat("Mercury:%.1f Venus:%.1f Earth:%.1f Mars:%.1f Jupiter:%.1f Saturn:%.1f", 
                     planets[0].a, planets[1].a, planets[2].a, planets[3].a, planets[4].a, planets[5].a), 
                     10, GetScreenHeight() - 28, 11, LIGHTGRAY);
-        } else {
-            // Show selection hint when dialog is open
-            DrawText("Dialog Open - Click X or CLOSE to continue", 10, 10, 15, LIME);
         }
         
         DrawInfoDialog(&dialog, planets);
         
         EndDrawing();
         
-        // Keyboard
         if (!dialog.active) {
             if (IsKeyPressed(KEY_UP)) timeScale = fmin(timeScale * 1.5f, 30.0f);
             if (IsKeyPressed(KEY_DOWN)) timeScale = fmax(timeScale / 1.5f, 0.05f);
@@ -779,7 +731,6 @@ int main(void)
         }
     }
     
-    // Cleanup
     UnloadTexture(sunTex);
     UnloadTexture(sunGlow);
     UnloadTexture(mercTex);
