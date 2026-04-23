@@ -408,11 +408,10 @@ int main(void)
     
     Texture2D sunGlow = CreateSunGlowTexture();
    
-    // Create asteroid model once for all asteroids
     Texture2D asteroidTex = LoadTexture("asteroid.png");
     Model asteroidModel = {0};
     if (asteroidTex.id != 0) {
-        Mesh sphereMesh = GenMeshSphere(1.0f, 16, 16);  // Low poly for performance
+        Mesh sphereMesh = GenMeshSphere(1.0f, 16, 16);
         asteroidModel = LoadModelFromMesh(sphereMesh);
         SetMaterialTexture(&asteroidModel.materials[0], MATERIAL_MAP_DIFFUSE, asteroidTex);
         UnloadMesh(sphereMesh);
@@ -718,7 +717,6 @@ int main(void)
             DrawSphere((Vector3){0,0,0}, 1.6f, (Color){255, 255, 100, 120});
         }
         
-        // Draw asteroid belt - proper billboards (always face camera naturally)
         if (asteroidTex.id != 0) {
             for (int i = 0; i < ASTEROID_COUNT; i += 2) {
                 float distanceToSun = sqrtf(asteroids[i].position.x * asteroids[i].position.x +
@@ -727,15 +725,9 @@ int main(void)
                 if (brightness > 1.0f) brightness = 1.0f;
                 if (brightness < 0.4f) brightness = 0.4f;
                 
-                // Calculate the direction from asteroid to camera
                 Vector3 toCamera = Vector3Subtract(cam.position, asteroids[i].position);
                 toCamera = Vector3Normalize(toCamera);
                 
-                // Create a rotation that makes the billboard face the camera
-                // but with a slight random tilt so they're not all perfectly aligned
-                float rotAngle = asteroids[i].rotation * 57.3f;
-                
-                // Use billboard with proper alpha blending
                 DrawBillboard(cam, asteroidTex, asteroids[i].position,
                              asteroids[i].size * 1.2f, 
                              (Color){220, 190, 140, (unsigned char)(200 * brightness)});

@@ -6,7 +6,7 @@
 
 An immersive, real-time 3D solar system simulation built with Raylib. Experience the beauty of our cosmic neighborhood with accurate orbital mechanics, realistic textures, atmospheric effects, and interactive exploration.
 
-![Solar System Simulation](new.png)
+![Solar System Simulation](screenshot.png)
 
 ## ✨ Features
 
