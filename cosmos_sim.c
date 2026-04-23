@@ -70,12 +70,14 @@ typedef struct {
     float yOffset;
 } Asteroid;
 
-// ================= DIALOG STRUCT =================
+// ================= SELECTION INFO STRUCT =================
 typedef struct {
     bool active;
-    int selectedType;
+    int selectedType;  // 0=planet, 1=sun, 2=moon
     int selectedIndex;
-} InfoDialog;
+    float scrollOffset;
+    float targetScroll;
+} SelectionInfo;
 
 // ================= KEPLER SOLVER =================
 static double solve_kepler(double M, double e)
@@ -170,67 +172,74 @@ static Texture2D CreateSunGlowTexture() {
     return tex;
 }
 
-// ================= DRAW INFO DIALOG =================
-static void DrawInfoDialog(InfoDialog *dialog, Planet *planets)
+// ================= DRAW INFO PANEL =================
+static void DrawInfoPanel(SelectionInfo *info, Planet *planets)
 {
-    if (!dialog->active) return;
+    if (!info->active) return;
     
-    float dw = 520, dh = 540;
-    float dx = (GetScreenWidth() - dw) / 2;
-    float dy = (GetScreenHeight() - dh) / 2;
+    info->scrollOffset += (info->targetScroll - info->scrollOffset) * 0.2f;
+    
+    float panelWidth = 500;
+    float panelHeight = 550;
+    float panelX = (GetScreenWidth() - panelWidth) / 2;
+    float panelY = (GetScreenHeight() - panelHeight) / 2;
     
     DrawRectangle(0, 0, GetScreenWidth(), GetScreenHeight(), (Color){0, 0, 0, 200});
-    DrawRectangleRounded((Rectangle){dx, dy, dw, dh}, 0.1f, 10, (Color){25, 25, 45, 245});
-    DrawRectangleRoundedLines((Rectangle){dx, dy, dw, dh}, 0.1f, 10, GOLD);
-    DrawRectangleRounded((Rectangle){dx + 5, dy + 5, dw - 10, 50}, 0.1f, 10, (Color){60, 60, 100, 255});
+    DrawRectangleRounded((Rectangle){panelX, panelY, panelWidth, panelHeight}, 0.1f, 10, (Color){20, 20, 45, 250});
+    DrawRectangleRoundedLines((Rectangle){panelX, panelY, panelWidth, panelHeight}, 0.1f, 10, GOLD);
+    DrawRectangleRounded((Rectangle){panelX + 5, panelY + 5, panelWidth - 10, 50}, 0.1f, 10, (Color){60, 60, 100, 255});
     
     char title[64];
     Color titleColor;
-    if (dialog->selectedType == 0) {
-        sprintf(title, "★ %s ★", planets[dialog->selectedIndex].name);
+    if (info->selectedType == 0) {
+        sprintf(title, "★ %s ★", planets[info->selectedIndex].name);
         titleColor = YELLOW;
-    } else if (dialog->selectedType == 1) {
+    } else if (info->selectedType == 1) {
         sprintf(title, "★ SUN ★");
         titleColor = ORANGE;
     } else {
         sprintf(title, "★ MOON ★");
         titleColor = LIGHTGRAY;
     }
-    int tw = MeasureText(title, 26);
-    DrawText(title, dx + dw/2 - tw/2, dy + 15, 26, titleColor);
+    int titleWidth = MeasureText(title, 26);
+    DrawText(title, panelX + panelWidth/2 - titleWidth/2, panelY + 18, 26, titleColor);
     
-    Rectangle closeBtn = {dx + dw - 45, dy + 8, 35, 35};
+    Rectangle closeBtn = {panelX + panelWidth - 45, panelY + 10, 35, 35};
     DrawRectangleRounded(closeBtn, 0.2f, 10, (Color){200, 60, 60, 220});
     DrawText("X", closeBtn.x + 12, closeBtn.y + 7, 22, WHITE);
     if (CheckCollisionPointRec(GetMousePosition(), closeBtn) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        dialog->active = false;
+        info->active = false;
         return;
     }
     
-    float y = dy + 70;
+    float contentY = panelY + 65;
+    float contentHeight = panelHeight - 120;
+    BeginScissorMode(panelX + 15, contentY, panelWidth - 30, contentHeight);
     
-    float px = dx + dw/2 - 60;
-    if (dialog->selectedType == 0 && planets[dialog->selectedIndex].tex.id != 0) {
-        DrawTexturePro(planets[dialog->selectedIndex].tex, 
-            (Rectangle){0, 0, (float)planets[dialog->selectedIndex].tex.width, (float)planets[dialog->selectedIndex].tex.height},
-            (Rectangle){px, y, 120, 120}, (Vector2){0, 0}, 0, WHITE);
-    } else if (dialog->selectedType == 1) {
-        DrawCircle(px + 60, y + 60, 45, ORANGE);
-        DrawCircle(px + 60, y + 60, 30, YELLOW);
-        DrawCircle(px + 60, y + 60, 15, (Color){255, 220, 100, 255});
+    float y = contentY + 10 - info->scrollOffset;
+    
+    float previewX = panelX + panelWidth/2 - 60;
+    if (info->selectedType == 0 && planets[info->selectedIndex].tex.id != 0) {
+        DrawTexturePro(planets[info->selectedIndex].tex, 
+            (Rectangle){0, 0, (float)planets[info->selectedIndex].tex.width, (float)planets[info->selectedIndex].tex.height},
+            (Rectangle){previewX, y, 120, 120}, (Vector2){0, 0}, 0, WHITE);
+    } else if (info->selectedType == 1) {
+        DrawCircle(previewX + 60, y + 60, 45, ORANGE);
+        DrawCircle(previewX + 60, y + 60, 30, YELLOW);
+        DrawCircle(previewX + 60, y + 60, 15, (Color){255, 220, 100, 255});
     } else {
-        DrawCircle(px + 60, y + 60, 40, LIGHTGRAY);
-        DrawCircle(px + 60, y + 60, 25, GRAY);
-        DrawCircle(px + 60, y + 60, 12, DARKGRAY);
+        DrawCircle(previewX + 60, y + 60, 40, LIGHTGRAY);
+        DrawCircle(previewX + 60, y + 60, 25, GRAY);
+        DrawCircle(previewX + 60, y + 60, 12, DARKGRAY);
     }
     y += 135;
     
-    DrawText("DESCRIPTION", dx + 15, y, 16, SKYBLUE);
+    DrawText("DESCRIPTION", panelX + 20, y, 16, SKYBLUE);
     y += 22;
-    DrawRectangle(dx + 10, y, dw - 20, 55, (Color){0, 0, 0, 120});
+    DrawRectangle(panelX + 15, y, panelWidth - 30, 55, (Color){0, 0, 0, 120});
     
-    if (dialog->selectedType == 0) {
-        int idx = dialog->selectedIndex;
+    if (info->selectedType == 0) {
+        int idx = info->selectedIndex;
         const char* desc = idx == 0 ? "The smallest and fastest planet, closest to the Sun." :
                           idx == 1 ? "Earth's 'sister planet' with a thick toxic atmosphere." :
                           idx == 2 ? "Our home, the only known planet to support life." :
@@ -239,107 +248,128 @@ static void DrawInfoDialog(InfoDialog *dialog, Planet *planets)
                           idx == 5 ? "Famous for its beautiful ring system." :
                           idx == 6 ? "Rotates on its side, giving it extreme seasons." : 
                           "The windiest planet in the solar system.";
-        DrawText(desc, dx + 15, y + 8, 12, LIGHTGRAY);
-    } else if (dialog->selectedType == 1) {
-        DrawText("The Sun is the star at the center of our Solar System.", dx + 15, y + 5, 12, LIGHTGRAY);
-        DrawText("It is a nearly perfect sphere of hot plasma, heated by", dx + 15, y + 22, 12, LIGHTGRAY);
-        DrawText("nuclear fusion reactions in its core.", dx + 15, y + 39, 12, LIGHTGRAY);
+        DrawText(desc, panelX + 20, y + 8, 12, LIGHTGRAY);
+    } else if (info->selectedType == 1) {
+        DrawText("The Sun is the star at the center of our Solar System.", panelX + 20, y + 5, 12, LIGHTGRAY);
+        DrawText("It is a nearly perfect sphere of hot plasma, heated by", panelX + 20, y + 22, 12, LIGHTGRAY);
+        DrawText("nuclear fusion reactions in its core.", panelX + 20, y + 39, 12, LIGHTGRAY);
     } else {
-        DrawText("The Moon is Earth's only natural satellite.", dx + 15, y + 5, 12, LIGHTGRAY);
-        DrawText("It is the fifth-largest natural satellite in the Solar", dx + 15, y + 22, 12, LIGHTGRAY);
-        DrawText("System and is in synchronous rotation with Earth.", dx + 15, y + 39, 12, LIGHTGRAY);
+        DrawText("The Moon is Earth's only natural satellite.", panelX + 20, y + 5, 12, LIGHTGRAY);
+        DrawText("It is the fifth-largest natural satellite in the Solar", panelX + 20, y + 22, 12, LIGHTGRAY);
+        DrawText("System and is in synchronous rotation with Earth.", panelX + 20, y + 39, 12, LIGHTGRAY);
     }
     y += 70;
     
-    DrawText("STATISTICS", dx + 15, y, 16, SKYBLUE);
+    DrawText("STATISTICS", panelX + 20, y, 16, SKYBLUE);
     y += 22;
     
-    if (dialog->selectedType == 0) {
-        Planet *p = &planets[dialog->selectedIndex];
-        DrawText(TextFormat("Distance: %.2f AU (%.0f million km)", p->a, p->a * 149.6), dx + 20, y, 12, WHITE); y += 18;
-        DrawText(TextFormat("Orbital Period: %.2f Earth years", p->period), dx + 20, y, 12, WHITE); y += 18;
-        DrawText(TextFormat("Diameter: %.0f km", p->radius * 20000), dx + 20, y, 12, WHITE); y += 18;
-        DrawText(TextFormat("Day Length: %.1f Earth hours", 24.0f / fmax(p->rot_speed, 0.1f)), dx + 20, y, 12, WHITE); y += 18;
-        DrawText(TextFormat("Axial Tilt: %.1f°", p->tilt), dx + 20, y, 12, WHITE); y += 25;
-    } else if (dialog->selectedType == 1) {
-        DrawText("Type: G-type main-sequence star", dx + 20, y, 12, WHITE); y += 18;
-        DrawText("Age: ~4.6 billion years", dx + 20, y, 12, WHITE); y += 18;
-        DrawText("Diameter: 1.39 million km", dx + 20, y, 12, WHITE); y += 18;
-        DrawText("Surface Temperature: ~5,500°C", dx + 20, y, 12, WHITE); y += 18;
-        DrawText("Mass: 333,000 x Earth", dx + 20, y, 12, WHITE); y += 25;
+    if (info->selectedType == 0) {
+        Planet *p = &planets[info->selectedIndex];
+        DrawText(TextFormat("Distance from Sun: %.2f AU (%.0f million km)", p->a, p->a * 149.6), panelX + 25, y, 12, WHITE); y += 18;
+        DrawText(TextFormat("Orbital Period: %.2f Earth years", p->period), panelX + 25, y, 12, WHITE); y += 18;
+        DrawText(TextFormat("Diameter: %.0f km", p->radius * 20000), panelX + 25, y, 12, WHITE); y += 18;
+        DrawText(TextFormat("Day Length: %.1f Earth hours", 24.0f / fmax(p->rot_speed, 0.1f)), panelX + 25, y, 12, WHITE); y += 18;
+        DrawText(TextFormat("Axial Tilt: %.1f°", p->tilt), panelX + 25, y, 12, WHITE); y += 25;
+    } else if (info->selectedType == 1) {
+        DrawText("Type: G-type main-sequence star", panelX + 25, y, 12, WHITE); y += 18;
+        DrawText("Age: ~4.6 billion years", panelX + 25, y, 12, WHITE); y += 18;
+        DrawText("Diameter: 1.39 million km", panelX + 25, y, 12, WHITE); y += 18;
+        DrawText("Surface Temperature: ~5,500°C", panelX + 25, y, 12, WHITE); y += 18;
+        DrawText("Mass: 333,000 x Earth", panelX + 25, y, 12, WHITE); y += 25;
     } else {
-        DrawText("Type: Natural satellite", dx + 20, y, 12, WHITE); y += 18;
-        DrawText("Distance: 384,400 km from Earth", dx + 20, y, 12, WHITE); y += 18;
-        DrawText("Diameter: 3,474 km", dx + 20, y, 12, WHITE); y += 18;
-        DrawText("Orbital Period: 27.3 days", dx + 20, y, 12, WHITE); y += 18;
-        DrawText("Gravity: 1.62 m/s² (0.165 x Earth)", dx + 20, y, 12, WHITE); y += 25;
+        DrawText("Type: Natural satellite", panelX + 25, y, 12, WHITE); y += 18;
+        DrawText("Distance from Earth: 384,400 km", panelX + 25, y, 12, WHITE); y += 18;
+        DrawText("Diameter: 3,474 km", panelX + 25, y, 12, WHITE); y += 18;
+        DrawText("Orbital Period: 27.3 days", panelX + 25, y, 12, WHITE); y += 18;
+        DrawText("Gravity: 1.62 m/s² (0.165 x Earth)", panelX + 25, y, 12, WHITE); y += 25;
     }
     
-    DrawText("INTERESTING FACTS", dx + 15, y, 16, SKYBLUE);
+    DrawText("INTERESTING FACTS", panelX + 20, y, 16, SKYBLUE);
     y += 22;
     
-    if (dialog->selectedType == 0) {
-        int idx = dialog->selectedIndex;
+    if (info->selectedType == 0) {
+        int idx = info->selectedIndex;
         if (idx == 0) {
-            DrawText("• Extreme temperatures: -173°C to 427°C", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• No atmosphere to retain heat", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• One day is longer than one year!", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Most cratered planet", dx + 20, y, 11, LIME); y += 20;
+            DrawText("• Extreme temperatures: -173°C to 427°C", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• No atmosphere to retain heat", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• One day is longer than one year!", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Most cratered planet", panelX + 25, y, 11, LIME); y += 20;
         } else if (idx == 1) {
-            DrawText("• Hottest planet (462°C average)", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Rotates backwards (retrograde)", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Atmosphere is 96% CO2", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Pressure 92x Earth's", dx + 20, y, 11, LIME); y += 20;
+            DrawText("• Hottest planet (462°C average)", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Rotates backwards (retrograde)", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Atmosphere is 96% CO2", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Pressure 92x Earth's", panelX + 25, y, 11, LIME); y += 20;
         } else if (idx == 2) {
-            DrawText("• Only known planet with life", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• 71% covered in water", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Protective magnetic field", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• One moon (Luna)", dx + 20, y, 11, LIME); y += 20;
+            DrawText("• Only known planet with life", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• 71% covered in water", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Protective magnetic field", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• One moon (Luna)", panelX + 25, y, 11, LIME); y += 20;
         } else if (idx == 3) {
-            DrawText("• Home to Olympus Mons (largest volcano)", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Called the Red Planet", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Two small moons: Phobos & Deimos", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Thin CO2 atmosphere", dx + 20, y, 11, LIME); y += 20;
+            DrawText("• Home to Olympus Mons (largest volcano)", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Called the Red Planet", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Two small moons: Phobos & Deimos", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Thin CO2 atmosphere", panelX + 25, y, 11, LIME); y += 20;
         } else if (idx == 4) {
-            DrawText("• Largest planet in solar system", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Great Red Spot (storm bigger than Earth)", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• 79 known moons", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Gas giant - no solid surface", dx + 20, y, 11, LIME); y += 20;
+            DrawText("• Largest planet in solar system", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Great Red Spot (storm bigger than Earth)", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• 79 known moons", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Gas giant - no solid surface", panelX + 25, y, 11, LIME); y += 20;
         } else if (idx == 5) {
-            DrawText("• Famous for beautiful ring system", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Least dense - would float in water", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• 82 confirmed moons", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Rings of ice and rock", dx + 20, y, 11, LIME); y += 20;
+            DrawText("• Famous for beautiful ring system", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Least dense - would float in water", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• 82 confirmed moons", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Rings of ice and rock", panelX + 25, y, 11, LIME); y += 20;
         } else if (idx == 6) {
-            DrawText("• Rotates on its side (98° tilt)", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• First telescope discovery", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• 27 known moons", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Methane gives blue-green color", dx + 20, y, 11, LIME); y += 20;
+            DrawText("• Rotates on its side (98° tilt)", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• First telescope discovery", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• 27 known moons", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Methane gives blue-green color", panelX + 25, y, 11, LIME); y += 20;
         } else {
-            DrawText("• Strongest winds (2,100 km/h)", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• 14 known moons", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Predicted mathematically", dx + 20, y, 11, LIME); y += 16;
-            DrawText("• Triton orbits backwards", dx + 20, y, 11, LIME); y += 20;
+            DrawText("• Strongest winds (2,100 km/h)", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• 14 known moons", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Predicted mathematically", panelX + 25, y, 11, LIME); y += 16;
+            DrawText("• Triton orbits backwards", panelX + 25, y, 11, LIME); y += 20;
         }
-    } else if (dialog->selectedType == 1) {
-        DrawText("• Contains 99.86% of Solar System's mass", dx + 20, y, 11, LIME); y += 16;
-        DrawText("• Light takes 8 minutes to reach Earth", dx + 20, y, 11, LIME); y += 16;
-        DrawText("• Will become a red giant in ~5 billion years", dx + 20, y, 11, LIME); y += 16;
-        DrawText("• Solar flares can disrupt communications", dx + 20, y, 11, LIME); y += 20;
+    } else if (info->selectedType == 1) {
+        DrawText("• Contains 99.86% of Solar System's mass", panelX + 25, y, 11, LIME); y += 16;
+        DrawText("• Light takes 8 minutes to reach Earth", panelX + 25, y, 11, LIME); y += 16;
+        DrawText("• Will become a red giant in ~5 billion years", panelX + 25, y, 11, LIME); y += 16;
+        DrawText("• Solar flares can disrupt communications", panelX + 25, y, 11, LIME); y += 20;
     } else {
-        DrawText("• Moving away from Earth at 3.8 cm/year", dx + 20, y, 11, LIME); y += 16;
-        DrawText("• Only 12 people have walked on it", dx + 20, y, 11, LIME); y += 16;
-        DrawText("• No atmosphere - footprints last millions of years", dx + 20, y, 11, LIME); y += 16;
-        DrawText("• Causes Earth's tides", dx + 20, y, 11, LIME); y += 20;
+        DrawText("• Moving away from Earth at 3.8 cm/year", panelX + 25, y, 11, LIME); y += 16;
+        DrawText("• Only 12 people have walked on it", panelX + 25, y, 11, LIME); y += 16;
+        DrawText("• No atmosphere - footprints last millions of years", panelX + 25, y, 11, LIME); y += 16;
+        DrawText("• Causes Earth's tides", panelX + 25, y, 11, LIME); y += 20;
     }
     
-    float btnY = dy + dh - 50;
-    Rectangle closeBtn2 = {dx + dw/2 - 60, btnY, 120, 38};
+    EndScissorMode();
+    
+    float totalContent = y - (contentY + 10 - info->scrollOffset);
+    float scrollRatio = contentHeight / totalContent;
+    if (scrollRatio < 1.0f && totalContent > 0) {
+        float barHeight = fmax(contentHeight * scrollRatio, 30);
+        float barY = contentY + (info->scrollOffset / (totalContent - contentHeight)) * (contentHeight - barHeight);
+        DrawRectangleRounded((Rectangle){panelX + panelWidth - 20, barY, 8, barHeight}, 0.5f, 10, (Color){150, 150, 200, 180});
+    }
+    
+    Rectangle scrollArea = {panelX + 15, contentY, panelWidth - 30, contentHeight};
+    if (CheckCollisionPointRec(GetMousePosition(), scrollArea)) {
+        float wheel = GetMouseWheelMove();
+        if (wheel != 0) {
+            info->targetScroll -= wheel * 30;
+            if (info->targetScroll < 0) info->targetScroll = 0;
+            float maxScroll = fmax(totalContent - contentHeight, 0);
+            if (info->targetScroll > maxScroll) info->targetScroll = maxScroll;
+        }
+    }
+    
+    float btnY = panelY + panelHeight - 55;
+    Rectangle closeBtn2 = {panelX + panelWidth/2 - 60, btnY, 120, 40};
     DrawRectangleRounded(closeBtn2, 0.2f, 10, (Color){80, 80, 120, 230});
     DrawRectangleRoundedLines(closeBtn2, 0.2f, 10, (Color){200, 200, 255, 150});
-    DrawText("CLOSE", closeBtn2.x + 35, closeBtn2.y + 9, 18, WHITE);
+    DrawText("CLOSE", closeBtn2.x + 38, closeBtn2.y + 10, 18, WHITE);
     if (CheckCollisionPointRec(GetMousePosition(), closeBtn2) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-        dialog->active = false;
+        info->active = false;
     }
 }
 
@@ -437,7 +467,6 @@ int main(void)
     SetMaterialTexture(&outerRingModel.materials[0], MATERIAL_MAP_DIFFUSE, ringTex);
     outerRingModel.materials[0].maps[MATERIAL_MAP_DIFFUSE].color = (Color){200, 190, 160, 160};
     
-    // Asteroid belt - FIXED: all asteroids update smoothly
     Asteroid asteroids[ASTEROID_COUNT];
     for (int i = 0; i < ASTEROID_COUNT; i++) {
         asteroids[i].radius = 7.0f + ((float)rand() / RAND_MAX) * 2.0f;
@@ -457,8 +486,8 @@ int main(void)
     Vector3 moonPos = {0, 0, 0};
     float moonRadius = 0.18f;
     
-    InfoDialog dialog = {0};
-    dialog.active = false;
+    SelectionInfo selection = {0};
+    selection.active = false;
     
     float timeScale = 0.2f;
     float starRot = 0;
@@ -509,7 +538,6 @@ int main(void)
         moonPos = Vector3Add(planets[2].position, 
                             (Vector3){cosf(moonAngle) * 0.75f, sinf(moonAngle) * 0.1f, sinf(moonAngle) * 0.55f});
         
-        // Update asteroids
         for (int i = 0; i < ASTEROID_COUNT; i++) {
             asteroids[i].angle += asteroids[i].speed * dt;
             if (asteroids[i].angle > 2 * PI) asteroids[i].angle -= 2 * PI;
@@ -522,13 +550,13 @@ int main(void)
         }
         
         float wheel = GetMouseWheelMove();
-        if (wheel != 0 && !dialog.active) {
+        if (wheel != 0 && !selection.active) {
             zoom -= wheel * 3.0f;
             if (zoom < minZoom) zoom = minZoom;
             if (zoom > maxZoom) zoom = maxZoom;
         }
         
-        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT) && !dialog.active) {
+        if (IsMouseButtonDown(MOUSE_BUTTON_RIGHT) && !selection.active) {
             if (!rotating) {
                 rotating = true;
                 lastMouse = GetMousePosition();
@@ -551,43 +579,55 @@ int main(void)
         };
         cam.target = (Vector3){0, 0, 0};
         
+        // ================= FIXED PLANET SELECTION USING SCREEN SPACE =================
         if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
-            if (dialog.active) {
-                dialog.active = false;
+            if (selection.active) {
+                selection.active = false;
             } else {
-                Ray ray = GetMouseRay(GetMousePosition(), cam);
-                float closest = 2.5f;
-                int selType = -1, selIdx = -1;
+                Vector2 mousePos = GetMousePosition();
+                int bestMatch = -1;
+                int bestType = -1;
+                float bestDist = 50.0f; // Maximum pixel distance for selection
                 
+                // Check Sun (screen position)
                 Vector3 sunPos = {0, 0, 0};
-                float sunDist = GetRayCollisionSphere(ray, sunPos, 1.8f).distance;
-                if (sunDist > 0 && sunDist < closest) {
-                    selType = 1;
-                    closest = sunDist;
+                Vector2 sunScreen = GetWorldToScreen(sunPos, cam);
+                float sunDist = Vector2Distance(mousePos, sunScreen);
+                if (sunDist < bestDist) {
+                    bestDist = sunDist;
+                    bestType = 1;
+                    bestMatch = -1;
                 }
                 
-                float moonDist = GetRayCollisionSphere(ray, moonPos, moonRadius + 0.3f).distance;
-                if (moonDist > 0 && moonDist < closest) {
-                    selType = 2;
-                    closest = moonDist;
+                // Check Moon
+                Vector2 moonScreen = GetWorldToScreen(moonPos, cam);
+                float moonDist = Vector2Distance(mousePos, moonScreen);
+                if (moonDist < bestDist) {
+                    bestDist = moonDist;
+                    bestType = 2;
+                    bestMatch = -1;
                 }
                 
+                // Check all planets
                 for (int i = 0; i < MAX_PLANETS; i++) {
-                    float dist = GetRayCollisionSphere(ray, planets[i].position, planets[i].radius + 0.4f).distance;
-                    if (dist > 0 && dist < closest) {
-                        selType = 0;
-                        selIdx = i;
-                        closest = dist;
+                    Vector2 planetScreen = GetWorldToScreen(planets[i].position, cam);
+                    float dist = Vector2Distance(mousePos, planetScreen);
+                    if (dist < bestDist) {
+                        bestDist = dist;
+                        bestType = 0;
+                        bestMatch = i;
                     }
                 }
                 
-                if (selType >= 0) {
-                    dialog.active = true;
-                    dialog.selectedType = selType;
-                    dialog.selectedIndex = selIdx;
-                    if (selType == 0) printf("✓ Selected: %s\n", planets[selIdx].name);
-                    else if (selType == 1) printf("✓ Selected: SUN\n");
-                    else printf("✓ Selected: MOON\n");
+                if (bestType >= 0 && bestDist < 50.0f) {
+                    selection.active = true;
+                    selection.selectedType = bestType;
+                    selection.selectedIndex = bestMatch;
+                    selection.scrollOffset = 0;
+                    selection.targetScroll = 0;
+                    if (bestType == 0) printf("✓ SELECTED: %s (distance: %.1f pixels)\n", planets[bestMatch].name, bestDist);
+                    else if (bestType == 1) printf("✓ SELECTED: SUN (distance: %.1f pixels)\n", bestDist);
+                    else printf("✓ SELECTED: MOON (distance: %.1f pixels)\n", bestDist);
                 }
             }
         }
@@ -619,7 +659,10 @@ int main(void)
         DrawModelEx(sunModel, (Vector3){0,0,0}, (Vector3){0,1,0}, GetTime() * 0.15f,
                    (Vector3){1.4f * sunPulse, 1.4f * sunPulse, 1.4f * sunPulse}, WHITE);
         
-        // Draw all asteroids
+        if (selection.active && selection.selectedType == 1) {
+            DrawSphere((Vector3){0,0,0}, 1.6f, (Color){255, 255, 100, 120});
+        }
+        
         for (int i = 0; i < ASTEROID_COUNT; i++) {
             DrawSphere(asteroids[i].position, asteroids[i].size, (Color){170, 140, 100, 200});
         }
@@ -628,9 +671,9 @@ int main(void)
             Planet *p = &planets[i];
             float rotAngle = GetTime() * p->rot_speed;
             
-            if (dialog.active && dialog.selectedType == 0 && dialog.selectedIndex == i) {
-                DrawSphere(p->position, p->radius + 0.18f, (Color){255, 255, 100, 120});
-                DrawCircle3D(p->position, p->radius + 0.35f, (Vector3){0, 1, 0}, 30, (Color){255, 255, 100, 200});
+            if (selection.active && selection.selectedType == 0 && selection.selectedIndex == i) {
+                DrawSphere(p->position, p->radius + 0.2f, (Color){255, 255, 100, 120});
+                DrawCircle3D(p->position, p->radius + 0.4f, (Vector3){0, 1, 0}, 30, (Color){255, 255, 100, 200});
             }
             
             if (showTrails) {
@@ -661,8 +704,8 @@ int main(void)
                 DrawModelEx(moonModel, moonPos, (Vector3){0,1,0}, GetTime() * 2.0f,
                            (Vector3){moonRadius, moonRadius, moonRadius}, WHITE);
                 
-                if (dialog.active && dialog.selectedType == 2) {
-                    DrawSphere(moonPos, moonRadius + 0.12f, (Color){255, 255, 100, 120});
+                if (selection.active && selection.selectedType == 2) {
+                    DrawSphere(moonPos, moonRadius + 0.15f, (Color){255, 255, 100, 120});
                 }
             }
             
@@ -691,18 +734,15 @@ int main(void)
         
         EndMode3D();
         
-        if (!dialog.active) {
+        if (!selection.active) {
             DrawText("SOLAR SYSTEM SIMULATION - BETA 1.0", 10, 10, 20, YELLOW);
             DrawText(TextFormat("FPS: %.0f", fps), 10, 40, 15, fps > 55 ? GREEN : RED);
             DrawText("★ LEFT CLICK on any planet, Sun, or Moon for DETAILED INFORMATION ★", 10, 65, 14, LIME);
             DrawText("Right-click+Drag: Rotate Camera | Mouse Wheel: Zoom In/Out", 10, 90, 12, LIGHTGRAY);
             DrawText(TextFormat("Time Scale: %.2fx | Zoom: %.1f", timeScale, zoom), 10, 110, 12, SKYBLUE);
             
-            if (showAtmospheres) {
-                DrawText("Atmospheres: ON (Press A to toggle)", 10, 130, 12, GREEN);
-            } else {
-                DrawText("Atmospheres: OFF (Press A to toggle)", 10, 130, 12, RED);
-            }
+            if (showAtmospheres) DrawText("Atmospheres: ON (Press A to toggle)", 10, 130, 12, GREEN);
+            else DrawText("Atmospheres: OFF (Press A to toggle)", 10, 130, 12, RED);
             
             DrawText("TOGGLES:", 10, GetScreenHeight() - 90, 14, WHITE);
             DrawText("O: Orbits", 10, GetScreenHeight() - 70, 11, showOrbits ? GREEN : RED);
@@ -717,11 +757,11 @@ int main(void)
                     10, GetScreenHeight() - 28, 11, LIGHTGRAY);
         }
         
-        DrawInfoDialog(&dialog, planets);
+        DrawInfoPanel(&selection, planets);
         
         EndDrawing();
         
-        if (!dialog.active) {
+        if (!selection.active) {
             if (IsKeyPressed(KEY_UP)) timeScale = fmin(timeScale * 1.5f, 30.0f);
             if (IsKeyPressed(KEY_DOWN)) timeScale = fmax(timeScale / 1.5f, 0.05f);
             if (IsKeyPressed(KEY_R)) timeScale = 0.2f;
