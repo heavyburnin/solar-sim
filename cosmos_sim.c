@@ -68,6 +68,9 @@ typedef struct {
     float angle;
     float radius;
     float yOffset;
+    Color color;        // Individual asteroid color
+    float rotation;     // Current rotation angle
+    float rotSpeed;     // Rotation speed
 } Asteroid;
 
 // ================= SELECTION INFO STRUCT =================
@@ -468,14 +471,47 @@ int main(void)
     outerRingModel.materials[0].maps[MATERIAL_MAP_DIFFUSE].color = (Color){200, 190, 160, 160};
     
     Asteroid asteroids[ASTEROID_COUNT];
-    for (int i = 0; i < ASTEROID_COUNT; i++) {
-        asteroids[i].radius = 7.0f + ((float)rand() / RAND_MAX) * 2.0f;
-        asteroids[i].angle = ((float)rand() / RAND_MAX) * 2 * PI;
-        asteroids[i].yOffset = ((float)rand() / RAND_MAX - 0.5f) * 0.4f;
-        asteroids[i].size = 0.045f + ((float)rand() / RAND_MAX) * 0.05f;
-        asteroids[i].speed = 0.08f + ((float)rand() / RAND_MAX) * 0.08f;
-    }
     
+    int largeCount = 0, mediumCount = 0, smallCount = 0;
+    for (int i = 0; i < ASTEROID_COUNT; i++) {
+        asteroids[i].radius = 6.5f + ((float)rand() / RAND_MAX) * 3.0f;
+        asteroids[i].angle = ((float)rand() / RAND_MAX) * 2 * PI;
+        asteroids[i].yOffset = ((float)rand() / RAND_MAX - 0.5f) * 0.6f;
+        asteroids[i].speed = 0.06f + ((float)rand() / RAND_MAX) * 0.1f;
+        asteroids[i].rotSpeed = 0.5f + ((float)rand() / RAND_MAX) * 2.0f;
+        asteroids[i].rotation = ((float)rand() / RAND_MAX) * 2 * PI;
+        
+        float sizeRand = (float)rand() / RAND_MAX;
+        if (sizeRand < 0.1f) {
+            asteroids[i].size = 0.12f + ((float)rand() / RAND_MAX) * 0.08f;
+            largeCount++;
+        } else if (sizeRand < 0.4f) {
+            asteroids[i].size = 0.07f + ((float)rand() / RAND_MAX) * 0.05f;
+            mediumCount++;
+        } else {
+            asteroids[i].size = 0.04f + ((float)rand() / RAND_MAX) * 0.03f;
+            smallCount++;
+        }
+        
+        int colorType = rand() % 6;
+        switch(colorType) {
+            case 0: asteroids[i].color = (Color){160, 140, 110, 220}; break; // Light brown
+            case 1: asteroids[i].color = (Color){140, 120, 90, 220}; break;  // Medium brown
+            case 2: asteroids[i].color = (Color){180, 150, 110, 220}; break; // Warm brown
+            case 3: asteroids[i].color = (Color){120, 100, 75, 220}; break;   // Dark brown
+            case 4: asteroids[i].color = (Color){100, 90, 80, 220}; break;    // Gray-brown
+            default: asteroids[i].color = (Color){150, 130, 100, 220}; break; // Tan
+        }
+        
+        if (rand() % 100 < 15) {
+            asteroids[i].color = (Color){180, 100, 70, 220};
+        }
+        
+        if (rand() % 100 < 10) {
+            asteroids[i].color = (Color){170, 160, 150, 220};
+        }
+    }
+
     float zoom = 85.0f;
     float minZoom = 5.0f;
     float maxZoom = 200.0f;
@@ -542,13 +578,19 @@ int main(void)
             asteroids[i].angle += asteroids[i].speed * dt;
             if (asteroids[i].angle > 2 * PI) asteroids[i].angle -= 2 * PI;
             
+            asteroids[i].rotation += asteroids[i].rotSpeed * dt;
+            if (asteroids[i].rotation > 2 * PI) asteroids[i].rotation -= 2 * PI;
+            
+            float verticalWobble = sinf(asteroids[i].angle * 2.5f) * 0.08f;
+            float horizontalWobble = cosf(asteroids[i].angle * 1.8f) * 0.03f;
+            
             asteroids[i].position = (Vector3){
-                cosf(asteroids[i].angle) * asteroids[i].radius,
-                asteroids[i].yOffset + sinf(asteroids[i].angle * 1.5f) * 0.05f,
-                sinf(asteroids[i].angle) * asteroids[i].radius
+                cosf(asteroids[i].angle + horizontalWobble) * asteroids[i].radius,
+                asteroids[i].yOffset + verticalWobble,
+                sinf(asteroids[i].angle + horizontalWobble) * asteroids[i].radius
             };
         }
-        
+
         float wheel = GetMouseWheelMove();
         if (wheel != 0 && !selection.active) {
             zoom -= wheel * 3.0f;
@@ -664,9 +706,37 @@ int main(void)
         }
         
         for (int i = 0; i < ASTEROID_COUNT; i++) {
-            DrawSphere(asteroids[i].position, asteroids[i].size, (Color){170, 140, 100, 200});
+            float distanceToSun = sqrtf(asteroids[i].position.x * asteroids[i].position.x + 
+                                        asteroids[i].position.z * asteroids[i].position.z);
+            float brightness = 0.6f + (1.0f / (1.0f + distanceToSun * 0.08f));
+            if (brightness > 1.0f) brightness = 1.0f;
+            if (brightness < 0.4f) brightness = 0.4f;
+            
+            Color brightColor = (Color){
+                (unsigned char)(asteroids[i].color.r * brightness),
+                (unsigned char)(asteroids[i].color.g * brightness),
+                (unsigned char)(asteroids[i].color.b * brightness),
+                asteroids[i].color.a
+            };
+            
+            DrawSphere(asteroids[i].position, asteroids[i].size, brightColor);
+            
+            if (asteroids[i].size > 0.12f) {
+                DrawSphere(asteroids[i].position, asteroids[i].size + 0.025f, 
+                          (Color){brightColor.r, brightColor.g, brightColor.b, 60});
+            }
+            
+            if (asteroids[i].size > 0.08f) {
+                Vector3 lightDir = Vector3Normalize((Vector3){1, 0.5f, 0.5f});
+                float dot = lightDir.x * asteroids[i].position.x + 
+                            lightDir.z * asteroids[i].position.z;
+                if (dot > 0.3f) {
+                    DrawSphere(asteroids[i].position, asteroids[i].size * 0.3f, 
+                              (Color){255, 245, 200, 100});
+                }
+            }
         }
-        
+
         for (int i = 0; i < MAX_PLANETS; i++) {
             Planet *p = &planets[i];
             float rotAngle = GetTime() * p->rot_speed;
